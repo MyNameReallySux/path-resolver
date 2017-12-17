@@ -1,0 +1,43 @@
+{
+  "name": "@beautiful-code/path-manager",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "babel -w ./src --out-dir ./dist",
+    "build": "babel ./src --out-dir ./dist",
+    "test": "mocha",
+    "test:watch": "npm run test -- --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MyNameReallySux/paths-generator.git"
+  },
+  "author": "Chris Coppola <mynamereallysux@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MyNameReallySux/paths-generator/issues"
+  },
+  "homepage": "https://github.com/MyNameReallySux/paths-generator#readme",
+  "devDependencies": {
+    "@beautiful-code/object-utils": "0.0.6",
+    "@beautiful-code/string-utils": "^0.1.6",
+    "@beautiful-code/type-utils": "^0.1.6",
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-register": "^6.26.0",
+    "babel-watch": "^2.0.7",
+    "chai": "^4.1.2",
+    "eslint": "^4.13.1",
+    "mocha": "^4.0.1",
+    "webpack": "^3.10.0"
+  },
+  "dependencies": {
+    "babel-polyfill": "^6.26.0",
+    "colors": "^1.1.2"
+  }
+}
