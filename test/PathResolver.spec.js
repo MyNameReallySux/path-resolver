@@ -256,11 +256,7 @@ describeClass('PathResolver', () => {
                         parentPath: 'src',
                         rootPath: PathResolver.defaultConfig.rootPath
                     },
-                    expected: {
-                        error: {
-                            name: ''
-                        }
-                    }
+                    expected: 'should throw error'
                 }
             }
         }
@@ -343,53 +339,30 @@ describeClass('PathResolver', () => {
             VALID: {
                 ALL: {
                     test: {
-                        filename: 'index.js',
-                        parentPath: 'src',
-                        rootPath: PathResolver.defaultConfig.rootPath
+                        key: 'index',
+                        scope: 'src',
                     },
                     expected: {
-                        value: path.resolve(PathResolver.defaultConfig.rootPath, 'src', 'index.js')
+                        value: 'resolveIndex'
                     }
                 },
-                NO_ROOT_PATH :{
+                NO_SCOPE: {
                     test: {
-                        filename: 'index.js',
-                        parentPath: 'src',
+                        key: 'index',
+                        scope: undefined,
                     },
                     expected: {
-                        value: path.resolve('src', 'index.js')
+                        value: 'resolveIndex'
                     }
                 },
-                NO_PARENT_PATH :{
-                    test: {
-                        filename: 'index.js',
-                        rootPath: PathResolver.defaultConfig.rootPath
-                        
-                    },
-                    expected: {
-                        value: path.resolve(PathResolver.defaultConfig.rootPath, 'index.js')
-                    }
-                },
-                FILENAME_ONLY: {
-                    test: {
-                        filename: 'index.js'
-                    },
-                    expected: {
-                        value: 'index.js'
-                    }
-                }
             }, 
             INVALID: {
-                NO_FILENAME: {
+                NO_KEY: {
                     test: {
-                        parentPath: 'src',
-                        rootPath: PathResolver.defaultConfig.rootPath
+                        key: undefined,
+                        scope: 'src'
                     },
-                    expected: {
-                        error: {
-                            name: ''
-                        }
-                    }
+                    expected: 'should throw error'
                 }
             }
         }
@@ -402,8 +375,8 @@ describeClass('PathResolver', () => {
         ##################### */
 
         const TESTS = {
-            format: ({filename, parentPath, rootPath}) => {
-                let value = pathResolver._formatResolverKey(filename, parentPath, rootPath)
+            format: ({key, scope}) => {
+                let value = pathResolver._formatResolverKey(key, scope)
                 return { value }
             }
         }
@@ -419,21 +392,16 @@ describeClass('PathResolver', () => {
             Execute Tests
         ##################### */
 
-        describe('Returns an absolute directory path if', () => {
+        describe('Returns a valid resolver key if', () => {
             let { VALID } = DATA
 
-            it(`is passed 3 valid params`, () => {
+            it(`is passed 2 valid params`, () => {
                 let { result, expected } = runFormatTest(VALID.ALL)
                 expect(result.value).equals(expected.value)
             })
 
-            it(`is not passed a valid 'rootPath'`, () => {
-                let { result, expected } = runFormatTest(VALID.NO_ROOT_PATH)
-                expect(result.value).equals(expected.value)
-            })
-
-            it(`is not passed a valid 'parentPath'`, () => {
-                let { result, expected } = runFormatTest(VALID.NO_PARENT_PATH)
+            it(`is not passed a valid 'scope'`, () => {
+                let { result, expected } = runFormatTest(VALID.NO_SCOPE)
                 expect(result.value).equals(expected.value)
             })
         })
@@ -442,7 +410,7 @@ describeClass('PathResolver', () => {
             let { INVALID } = DATA
 
             it(`is passed no filename`, () => {
-                expect(() => runFormatTest(INVALID.NO_FILENAME)).to.throw(TypeError, `Path must be a string. Received undefined`)
+                expect(() => runFormatTest(INVALID.NO_FILENAME)).to.throw(TypeError, `Cannot read property 'test' of undefined`)
             })
         })
 
