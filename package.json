@@ -1,13 +1,14 @@
 {
   "name": "@beautiful-code/path-resolver",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
     "start": "babel -w ./src --out-dir ./dist",
     "build": "babel ./src --out-dir ./dist",
-    "test": "mocha",
-    "test:watch": "npm run test -- --watch"
+    "test": "./node_modules/.bin/_mocha",
+    "test:watch": "npm run test -- --watch",
+    "generate:docs": "jsdoc -c ./config/jsdoc.config.json"
   },
   "repository": {
     "type": "git",
@@ -18,13 +19,15 @@
   "bugs": {
     "url": "https://github.com/MyNameReallySux/paths-generator/issues"
   },
+  "files": ["dist"],
   "homepage": "https://github.com/MyNameReallySux/paths-generator#readme",
   "dependencies": {
-    "babel-polyfill": "^6.26.0",
-    "colors": "^1.1.2",
     "@beautiful-code/object-utils": "0.0.6",
     "@beautiful-code/string-utils": "^0.1.6",
-    "@beautiful-code/type-utils": "^0.1.6"
+    "@beautiful-code/type-utils": "^0.1.6",
+    "babel-polyfill": "^6.26.0",
+    "colors": "^1.1.2",
+    "ink-docstrap": "^1.3.2"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -37,7 +40,8 @@
     "babel-watch": "^2.0.7",
     "chai": "^4.1.2",
     "eslint": "^4.13.1",
-    "mocha": "^4.0.1",
+    "minami": "git://github.com/mynamereallysux/minami.git#sort-data",
+    "mocha": "^4.1.0",
     "webpack": "^3.10.0"
   }
 }

@@ -10,15 +10,18 @@ let { isFunction } = global.imports.TypeUtils
 let { assert, expect } = global.imports.Chai
 let colors = global.imports.colors
 
-import { PathResolver } from '../dist/PathResolver'
-import { DuplicateKeyError } from '../dist/errors'
+import { PathResolver } from '../src/PathResolver'
+import { DuplicateKeyError } from '../src/errors'
 
 const describeClass = makeDescribeClass(describe)
 const describeFunc = makeDescribeFunc(describe)
 
+// supressConsole = () => {}
+// restoreConsole = () => {}
+
 describeClass('PathResolver', () => {
-    describeFunc('#_addPathToResolver(directoryResolver, resolverKey, resolverPath)', () => {
-        // #region _addPathToResolver Initialization
+    describeFunc('#_addToResolver(directoryResolver, resolverKey, resolverPath)', () => {
+        // #region _addToResolver Initialization
         /* ######################
             Initialization
         ##################### */
@@ -29,9 +32,9 @@ describeClass('PathResolver', () => {
             pathResolver = new PathResolver()
             restoreConsole()
         })
-        // #endregion _addPathToResolver Initialization */
+        // #endregion _addToResolver Initialization */
 
-        // #region _addPathToResolver Test Data
+        // #region _addToResolver Test Data
         /* ######################
             Test Data
         ##################### */
@@ -40,7 +43,7 @@ describeClass('PathResolver', () => {
             VALID: {
                 ALL: {
                     test: {
-                        directoryResolver: {},                    
+                        resolver: {},
                         resolverKey: 'resolveSrc',
                         resolverPath: 'src',
                         relativePath: 'index.html'
@@ -52,31 +55,31 @@ describeClass('PathResolver', () => {
                 },
                 RELATIVE_PATH: {
                     test: {
-                        directoryResolver: {},                    
+                        resolver: {},
                         resolverKey: 'resolveSrc',
                         resolverPath: 'src',
                         relativePath: 'index.html'
                     }, 
                     expected: {
-                        value: path.resolve(PathResolver.defaultConfig.rootPath, 'src', 'index.html')
+                        value: path.resolve(PathResolver.defaultOptions.rootPath, 'src', 'index.html')
                     }
                 },
                 NO_RELATIVE_PATH: {
                     test: {
-                        directoryResolver: {},                    
+                        resolver: {},
                         resolverKey: 'resolveSrc',
                         resolverPath: 'src',
                         relativePath: undefined
                     }, 
                     expected: {
-                        value: path.resolve(PathResolver.defaultConfig.rootPath, 'src')
+                        value: path.resolve(PathResolver.defaultOptions.rootPath, 'src')
                     }
                 }
             },
             INVALID: {
                 NO_RESOLVER: {
                     test: {
-                        directoryResolver: undefined,                    
+                        resolver: undefined,
                         resolverKey: 'resolveSrc',
                         resolverPath: 'src',
                         relativePath: 'index.html'
@@ -85,7 +88,7 @@ describeClass('PathResolver', () => {
                 },
                 NO_RESOLVER_KEY: {
                     test: {
-                        directoryResolver: {},                    
+                        resolver: {},
                         resolverKey: undefined,
                         resolverPath: 'src',
                         relativePath: 'index.html'
@@ -94,7 +97,7 @@ describeClass('PathResolver', () => {
                 },
                 NO_RESOLVER_PATH: {
                     test: {
-                        directoryResolver: {},                    
+                        resolver: {},
                         resolverKey: 'resolveSrc',
                         resolverPath: undefined,
                         relativePath: 'index.html'
@@ -103,26 +106,28 @@ describeClass('PathResolver', () => {
                 },
             }
         }
-        // #endregion _addPathToResolver Test Data
+        // #endregion _addToResolver Test Data
 
-        // #region _addPathToResolver Test Functions
+        // #region _addToResolver Test Functions
         /* ######################
             Test Functions
         ##################### */
 
         const TESTS = {
-            keyCreation: ({ directoryResolver, resolverKey, resolverPath, relativePath }) => {
-                pathResolver._addPathToResolver(directoryResolver, resolverKey, resolverPath)
-                let hasKey = directoryResolver.hasOwnProperty(resolverKey)
-                let isFunc = isFunction(directoryResolver[resolverKey])
-                let value = directoryResolver.resolveSrc(relativePath)
-                return { hasKey, isFunc, value }
+            keyCreation: ({ resolverKey, resolverPath, resolver, relativePath }) => {
+                pathResolver._addToResolver(resolverKey, resolverPath, resolver)
+                return {
+                    value: resolver.resolveSrc(relativePath),
+                    hasKey: resolver.hasOwnProperty(resolverKey),
+                    isFunc: isFunction(resolver[resolverKey])
+                }
             },
     
-            subFunction: ({ directoryResolver, resolverKey, resolverPath, relativePath }) => {
-                pathResolver._addPathToResolver(directoryResolver, resolverKey, resolverPath)
-                let value = directoryResolver[resolverKey](relativePath)
-                return { value }
+            subFunction: ({ resolverKey, resolverPath, resolver, relativePath }) => {
+                pathResolver._addToResolver(resolverKey, resolverPath, resolver)
+                return { 
+                    value: resolver[resolverKey](relativePath)
+                 }
             }
         }
 
@@ -133,9 +138,9 @@ describeClass('PathResolver', () => {
         const runSubFunctionTest = (testSuite, onResult) => {
             return runTest(testSuite, TESTS.subFunction, onResult)
         }
-        // #endregion _addPathToResolver Test Functions
+        // #endregion _addToResolver Test Functions
 
-        // #region _addPathToResolver Execute Tests
+        // #region _addToResolver Execute Tests
         /* ######################
             Execute Tests
         ##################### */
@@ -147,7 +152,7 @@ describeClass('PathResolver', () => {
                 ({ result, expected } = runKeyCreationTest(VALID.ALL))
             })
 
-            it(`The 'directoryResolver' object should have 'resolverKey' property`, () => {
+            it(`The 'resolver' object should have 'resolverKey' property`, () => {
                 expect(result.hasKey).equals(expected.hasKey)
             })
 
@@ -158,15 +163,15 @@ describeClass('PathResolver', () => {
 
         describe('Throws an error if any of the three parameters are undefined', () => {
             let { INVALID } = DATA
-            
-            it(`The 'directoryResolver' is undefined`, () => {
+
+            it(`The 'resolver' is undefined`, () => {
                 expect(() => runKeyCreationTest(INVALID.NO_RESOLVER))
-                    .to.throw(TypeError, `Cannot read property 'hasOwnProperty' of undefined`)
+                    .to.throw(Error, `Cannot read property 'hasOwnProperty' of undefined`)
             })
 
             it(`The 'resolverKey' is undefined`, () => {
                 expect(() => runKeyCreationTest(INVALID.NO_RESOLVER_KEY))
-                    .to.throw(TypeError, `directoryResolver.resolveSrc is not a function`)
+                    .to.throw(TypeError, `resolver.resolveSrc is not a function`)
             })
 
             it(`The 'resolverPath' is undefined`, () => {
@@ -188,11 +193,11 @@ describeClass('PathResolver', () => {
                 expect(result.value).equals(expected.value)
             })
         })
-        // #endregion _addPathToResolver Execute Tests
+        // #endregion _addToResolver Execute Tests
     })
 
-    describeFunc('#_formatFullPath(filename, parentPath, rootPath)', () => {
-        // #region _formatFullPath Initialization
+    describeFunc('#_formatPath(filename, parentPath, rootPath)', () => {
+        // #region _formatPath Initialization
         /* ######################
             Initialization
         ##################### */
@@ -203,9 +208,9 @@ describeClass('PathResolver', () => {
             pathResolver = new PathResolver()
             restoreConsole()
         })
-        // #endregion _formatFullPath Initialization
+        // #endregion _formatPath Initialization
 
-        // #region _formatFullPath Test Data
+        // #region _formatPath Test Data
          /* ######################
             Test Data
         ##################### */
@@ -216,10 +221,10 @@ describeClass('PathResolver', () => {
                     test: {
                         filename: 'index.js',
                         parentPath: 'src',
-                        rootPath: PathResolver.defaultConfig.rootPath
+                        rootPath: PathResolver.defaultOptions.rootPath
                     },
                     expected: {
-                        value: path.resolve(PathResolver.defaultConfig.rootPath, 'src', 'index.js')
+                        value: path.resolve(PathResolver.defaultOptions.rootPath, 'src', 'index.js')
                     }
                 },
                 NO_ROOT_PATH :{
@@ -234,11 +239,11 @@ describeClass('PathResolver', () => {
                 NO_PARENT_PATH :{
                     test: {
                         filename: 'index.js',
-                        rootPath: PathResolver.defaultConfig.rootPath
+                        rootPath: PathResolver.defaultOptions.rootPath
                         
                     },
                     expected: {
-                        value: path.resolve(PathResolver.defaultConfig.rootPath, 'index.js')
+                        value: path.resolve(PathResolver.defaultOptions.rootPath, 'index.js')
                     }
                 },
                 FILENAME_ONLY: {
@@ -254,23 +259,23 @@ describeClass('PathResolver', () => {
                 NO_FILENAME: {
                     test: {
                         parentPath: 'src',
-                        rootPath: PathResolver.defaultConfig.rootPath
+                        rootPath: PathResolver.defaultOptions.rootPath
                     },
                     expected: 'should throw error'
                 }
             }
         }
 
-        // #endregion _formatFullPath Test Data
+        // #endregion _formatPath Test Data
 
-        // #region _formatFullPath Test Functions
+        // #region _formatPath Test Functions
         /* ######################
             Test Functions
         ##################### */
 
         const TESTS = {
             format: ({filename, parentPath, rootPath}) => {
-                let value = pathResolver._formatFullPath(filename, parentPath, rootPath)
+                let value = pathResolver._formatPath(filename, parentPath, rootPath)
                 return { value }
             }
         }
@@ -279,9 +284,9 @@ describeClass('PathResolver', () => {
             return runTest(testSuite, TESTS.format)
         }
 
-        // #endregion _formatFullPath Test Functions
+        // #endregion _formatPath Test Functions
 
-        // #region _formatFullPath Execute Tests
+        // #region _formatPath Execute Tests
         /* ######################
             Execute Tests
         ##################### */
@@ -313,7 +318,7 @@ describeClass('PathResolver', () => {
             })
         })
 
-        // #endregion _formatFullPath Execute Tests
+        // #endregion _formatPath Execute Tests
     })
 
     describeFunc('#_formatResolverKey(key)', () => {
@@ -416,126 +421,5 @@ describeClass('PathResolver', () => {
 
         // #endregion _formatResolverKey Execute Tests
     })
-
-    describeFunc('#_resolverHasPropertyEmpty(object, key)', () => {
-        // #region _resolverHasPropertyEmpty Initialization
-        /* ######################
-            Initialization
-        ##################### */
-        let pathResolver
-        
-        before(() => {
-            supressConsole()
-            pathResolver = new PathResolver()
-            restoreConsole()
-        })
-        // #endregion _resolverHasPropertyEmpty Initialization
-
-        // #region _resolverHasPropertyEmpty Test Data
-        /* ######################
-            Test Data
-        ##################### */
-        let DATA = {
-            DOES_NOT_CONTAIN: {
-                test: {
-                    object: {
-                        name: 'Chris',
-                        age: 27
-                    },
-                    key: 'gender'
-                },
-                expected: {
-                    value: false
-                }
-            }, 
-            CONTAINS: {
-                test: {
-                    object: {
-                        name: 'Chris',
-                        age: 27,
-                        gender: 'M'
-                    },
-                    key: 'gender'
-                },
-                
-                expected: {
-                    value: true,
-                    error: {
-                        name: 'DuplicateKeyError'
-                    }
-                }
-            }
-        }
-        // #endregion _resolverHasPropertyEmpty Test Data
-
-        // #region _resolverHasPropertyEmpty Test Functions
-        /* ######################
-            Test Functions
-        ##################### */
-        const TESTS = {
-            return: ({ object, key }) => {
-                let value = pathResolver._resolverHasPropertyEmpty(object, key)
-                return { value }
-            },
-            callback: ({ object, key, }, onSuccess, onFailure) => {
-                let value = pathResolver._resolverHasPropertyEmpty(object, key, 
-                    (result) => isFunction(onSuccess) && onSuccess({ value: result }),
-                    (result, e) => isFunction(onFailure) && onFailure({ value: result, error: e })
-                )
-                return { value }
-            }
-                
-        }
-
-        const runReturnTest = (testSuite, onResult) => {
-            return runTest(testSuite, TESTS.return, onResult)
-        }
-
-        const runCallbackTest = (testSuite, onResult, onFailure) => {
-            return runTest(testSuite, TESTS.callback, onResult, onFailure)
-        }
-        // #endregion _resolverHasPropertyEmpty Test Functions
-
-        // #region _resolverHasPropertyEmpty Execute Tests
-        /* ######################
-            Execute Tests
-        ##################### */
-        describe('Returns a valid boolean value', () => {
-            it(`Should return 'false' when 'object' does not have given 'key`, () => {
-                runReturnTest(DATA.DOES_NOT_CONTAIN)
-            })
-    
-            it(`Should return 'true' when 'object' does have given 'key`, () => {
-                runReturnTest(DATA.CONTAINS)
-            })
-        })
-
-        describe('Executes the correct callback', () => {
-            it(`Should return 'false' when 'object' does not have given 'key`, () => {
-                let { result, expected } = runCallbackTest(DATA.DOES_NOT_CONTAIN)
-                expect(result.value).equals(expected.value)
-            })
-
-            it(`Should return 'true' when 'object' does have given 'key`, () => {
-                let { result, expected } = runCallbackTest(DATA.CONTAINS)
-                expect(result.value).equals(expected.value)
-            })
-    
-            it(`Should execute 'onSuccess' callback when result is 'false'`, () => {
-                runCallbackTest(DATA.DOES_NOT_CONTAIN, (result, expected) => {
-                    expect(result.value).to.equal(expected.value)
-                })
-            })
-
-            it(`Should execute 'onFailure' callback when result is 'true'`, () => {
-                runCallbackTest(DATA.CONTAINS, undefined, (result, expected) => {
-                    expect(result.value).to.equal(expected.value)
-                    expect(result.error.name).to.equal(expected.error.name)
-                })
-            })
-        })
-        // #endregion _resolverHasPropertyEmpty Execute Tests
-
-    })
-
 })
+

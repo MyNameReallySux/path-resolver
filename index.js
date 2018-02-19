@@ -52,21 +52,46 @@ let { PathResolver } = require('./dist/index')
 // debug(resolveSrc('index.js'))
 
 const directoryMap = {
+	// src: {
+	// 	_: 'source',
+	// 	navigation: {
+	// 		index: 'index.js',
+	// 		menu: 'menu.js'
+	// 	},
+	// 	index: 'index.js'
+	// },
+	// dist: {
+	// 	app: 'app.bundle.js'
+	// },
+	// scss: {
+	// 	_: '@style',
+	// 	manifest: '_manifest.scss',
+	// 	app: 'app.scss',
+	// 	nav: {
+	// 		manifest: '_manifest.scss',
+	// 		test: {
+	// 			_: '@test',
+	// 			more: 'more.html'
+				
+	// 		}
+	// 	}
+	// }
+
 	src: {
-		_: 'source',
-		navigation: {
-			index: 'index.js',
-			menu: 'menu.js'
-		},
-		index: 'index.js'
-	},
-	dist: {
-		app: 'app.bundle.js'
-	},
-	scss: {
-		_: '@style',
-		manifest: '_manifest.scss',
-		app: 'app.scss',
+		_: '@source',
+		nav: {
+			test: 'test.html',
+			style: 'style.css',
+			next: {
+				_: '@next',
+				more: {
+					_: 'testeroni',
+					even_more: {
+						index: 'index.html'
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -95,4 +120,4 @@ function isCyclic (obj) {
 }
 let { files, paths } = appPaths
 
-print(paths)
+console.log(paths)
