@@ -151,7 +151,7 @@ class PathResolver {
      * @function
      * @public
      */
-    makeRelativeResolver = (rootPath = '') => (relativePath = '') => path.resolve(rootPath, relativePath)
+    makeRelativeResolver = (rootPath) => (relativePath = '') => path.resolve(rootPath, relativePath)
 
     toString = () => {
         let directoryResolver = this.getDirectoryResolver()

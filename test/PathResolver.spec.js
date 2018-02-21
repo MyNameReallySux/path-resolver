@@ -20,8 +20,8 @@ const describeFunc = makeDescribeFunc(describe)
 // restoreConsole = () => {}
 
 describeClass('PathResolver', () => {
-    describeFunc('#_addToResolver(directoryResolver, resolverKey, resolverPath)', () => {
-        // #region _addToResolver Initialization
+    describeFunc('#_addResolver(directoryResolver, resolverKey, resolverPath)', () => {
+        // #region _addResolver Initialization
         /* ######################
             Initialization
         ##################### */
@@ -32,9 +32,9 @@ describeClass('PathResolver', () => {
             pathResolver = new PathResolver()
             restoreConsole()
         })
-        // #endregion _addToResolver Initialization */
+        // #endregion _addResolver Initialization */
 
-        // #region _addToResolver Test Data
+        // #region _addResolver Test Data
         /* ######################
             Test Data
         ##################### */
@@ -106,16 +106,16 @@ describeClass('PathResolver', () => {
                 },
             }
         }
-        // #endregion _addToResolver Test Data
+        // #endregion _addResolver Test Data
 
-        // #region _addToResolver Test Functions
+        // #region _addResolver Test Functions
         /* ######################
             Test Functions
         ##################### */
 
         const TESTS = {
             keyCreation: ({ resolverKey, resolverPath, resolver, relativePath }) => {
-                pathResolver._addToResolver(resolverKey, resolverPath, resolver)
+                pathResolver._addResolver(resolverKey, resolverPath, resolver)
                 return {
                     value: resolver.resolveSrc(relativePath),
                     hasKey: resolver.hasOwnProperty(resolverKey),
@@ -124,7 +124,7 @@ describeClass('PathResolver', () => {
             },
     
             subFunction: ({ resolverKey, resolverPath, resolver, relativePath }) => {
-                pathResolver._addToResolver(resolverKey, resolverPath, resolver)
+                pathResolver._addResolver(resolverKey, resolverPath, resolver)
                 return { 
                     value: resolver[resolverKey](relativePath)
                  }
@@ -138,9 +138,9 @@ describeClass('PathResolver', () => {
         const runSubFunctionTest = (testSuite, onResult) => {
             return runTest(testSuite, TESTS.subFunction, onResult)
         }
-        // #endregion _addToResolver Test Functions
+        // #endregion _addResolver Test Functions
 
-        // #region _addToResolver Execute Tests
+        // #region _addResolver Execute Tests
         /* ######################
             Execute Tests
         ##################### */
@@ -169,12 +169,12 @@ describeClass('PathResolver', () => {
                     .to.throw(Error, `Cannot read property 'hasOwnProperty' of undefined`)
             })
 
-            it(`The 'resolverKey' is undefined`, () => {
+            it(`The 'key' is undefined`, () => {
                 expect(() => runKeyCreationTest(INVALID.NO_RESOLVER_KEY))
                     .to.throw(TypeError, `resolver.resolveSrc is not a function`)
             })
 
-            it(`The 'resolverPath' is undefined`, () => {
+            it(`The 'path' is undefined`, () => {
                 expect(() => runKeyCreationTest(INVALID.NO_RESOLVER_PATH))
                     .to.throw(TypeError, `Path must be a string. Received undefined`)
             })
@@ -193,7 +193,7 @@ describeClass('PathResolver', () => {
                 expect(result.value).equals(expected.value)
             })
         })
-        // #endregion _addToResolver Execute Tests
+        // #endregion _addResolver Execute Tests
     })
 
     describeFunc('#_formatPath(filename, parentPath, rootPath)', () => {
