@@ -2,9 +2,9 @@
 import fs from 'fs'
 import path from 'path'
 
-import { warn, error } from './lib/ConsoleUtils'
-import { toCamelCase, toSnakeCase } from '@beautiful-code/string-utils'
-import { isFunction, isObject, isString } from '@beautiful-code/type-utils'
+import { print, debug, warn, error } from './lib/ConsoleUtils'
+import { toCamelCase, toSnakeCase, toKebabCase } from '@beautiful-code/string-utils'
+import { isBoolean, isFunction, isObject, isString } from '@beautiful-code/type-utils'
 
 import { DuplicateKeyError, InvalidArgumentsError } from './errors'
 
@@ -37,14 +37,14 @@ const Externals = {
 			if(contains){
 				throw new DuplicateKeyError(`The given object has duplicate keys '${key}'. Make sure all directories have unique key, or use scopes / aliases'`)
 			} else {
-                isFunction(onSuccess) ? onSuccess(false) : undefined
-                return false
+                isFunction(onSuccess) ? onSuccess(true) : undefined
+                return true
 			} 
 		} catch (e){
-			isFunction(onError) ? onError(true, e) : error(e)
-			return true
+			isFunction(onError) ? onError(false, e) : undefined
+			return false
         }
-		return contains
+		return false
     },
 
     isFileURI: (uri) => {
@@ -59,16 +59,18 @@ const Externals = {
 let { filterObject, hasDuplicateKeys, hasKeyAvailable, isDirectoryURI, isFileURI } = Externals
 
 /** 
- * Class that creates a suite of methods useful for resolving paths within a project. Includes a directory resolver, 
- * which creates relative path resolvers for each directory in a given directory map. Support for resolver renaming and
- * alias generation, which formats the resolver name to reflect the alias as the root rather than the full path.
+ * Class that creates a suite of methods cna collections useful for resolving paths within a project. Includes a directory
+ * resolver, which creates relative path resolvers for each directory in a given directory map. Support for resolver 
+ * renaming and alias generation, which formats the resolver name to reflect the alias as the root rather than the full path.
+ * Aliases are suitable for use in webpack and similar libraries.
  * 
  * @author Chris Coppola <mynamereallysux@gmail.com>
  */
 class PathResolver {
     /**
+     * @property {String} aliasRoot Namespace, or property name, that should contain the alias map.
      * @property {Number} depth How many directory levels should be processed. Set to -1 for inifinite depth.
-     * @property {String} fileroot Namespace, or property name, that should contain a raw directory map object.
+     * @property {Boolean} duplicateAliases Should both the alias and non alias resolvers be used when an alias is present.
      * @property {String} namespace Namespace, or property name, that should contain the directory resolver.
      * @property {Object} paths Object mapping projects directory structure.
      * @property {String} resolverPrefix Unvalidated options object.
@@ -79,9 +81,11 @@ class PathResolver {
      * @memberof PathResolver
      */
     static defaultOptions = {
+        aliasRoot: 'aliases',
         depth: -1,
-        fileroot: 'files',
-		namespace: 'paths',
+        duplicateAliases: false,
+        fileRoot: 'files',
+        namespace: 'paths',
         paths: {},
         resolverPrefix: 'resolve',
         rootPath: fs.realpathSync(process.cwd()),
@@ -102,11 +106,21 @@ class PathResolver {
 		this.initialize(...args)
     }
 
+    getDirectoryResolver = () => {
+        let { namespace } = this.options
+        return this[namespace]
+    }
+
+    getAliasMap = () => {
+        let { aliasRoot } = this.options
+        return this[aliasRoot]
+    }
+
     /** 
      * Configures an instance of path resolver. Can be used after a {@link PathResolver} instance is
      * created to defer the configuration. Passes arguments to the {@link PathResolver#initialize} function to be
      * processed and validated and sets the options instance property. Then passes on the configured
-     * rootPath, paths object, and designated fileroot
+     * rootPath, paths object, and designated fileRoot
      * 
      * @param {!String|!Object} rootPath|paths Projects root path or Object mapping projects directory structure.
      * @param {?Object} paths|options Object mapping projects directory structure or options object.
@@ -118,10 +132,9 @@ class PathResolver {
     initialize = (...args) => {
         this.options = this._handleArgs(...args)
         
-        let { directoryResolver, aliasResolver } = this._getInitialResolvers()
+        let { directoryResolver, aliasMap } = this._getInitialResolvers()
 
-        let fullResolver = this._createResolver(directoryResolver, aliasResolver, this.options)
-        this._setFileMap(fullResolver)
+        let fullResolver = this._createResolver(directoryResolver, aliasMap)
     }
 
     /** 
@@ -138,9 +151,46 @@ class PathResolver {
      * @function
      * @public
      */
-    makeRelativeResolver = (rootPath) => (relativePath = '') => path.resolve(rootPath, relativePath)
+    makeRelativeResolver = (rootPath = '') => (relativePath = '') => path.resolve(rootPath, relativePath)
 
+    toString = () => {
+        let directoryResolver = this.getDirectoryResolver()
+        let aliasMap = this.getAliasMap()
+
+        const PADDING_SIZE = 24
+
+        return `======================================
+:: DIRECTORY RESOLVER ::
+
+${'function'.padEnd(PADDING_SIZE)}\t ${'result'}
+${'-----------------'.padEnd(PADDING_SIZE)}\t ------------------
+${Object.entries(directoryResolver).reduce((str, [name, resolver], index, collection) => {
+    let formatted = name.padEnd(PADDING_SIZE)
+    let linebreak = index < collection.length - 1 ? '\n' : ''
+    str += `${formatted} \t ${resolver()}${linebreak}`
+    return str
+}, '')}
+======================================
+
+:: ALIAS MAP ::
+
+${'name'.padEnd(PADDING_SIZE)}\t ${'value'}
+${'-----------------'.padEnd(PADDING_SIZE)}\t ------------------
+${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
+    let formatted = alias.padEnd(PADDING_SIZE)
+    let linebreak = index < collection.length - 1 ? '\n' : ''
+    str += `${formatted} \t ${path}${linebreak}`
+    return str
+}, '')}`
+    }
+
+    printDetails = () => print(this.toString())
+        
     // Private Methods
+
+    _addAlias = (key, path, resolver) => {
+		if(hasKeyAvailable(resolver, key)) resolver[key] = this.makeRelativeResolver(path)()
+	}
 
     /** 
      * Creates and adds relative resolver function to the passed in resolver object, using the key as the object key.
@@ -153,17 +203,15 @@ class PathResolver {
      * @private
      * @memberof PathResolver#
      */
-	_addToResolver = (key, path, resolver) => {
-		hasKeyAvailable(resolver, key, () => {
-			resolver[key] = this.makeRelativeResolver(path)
-		})
-	}
+	_addResolver = (key, path, resolver) => {
+		if(hasKeyAvailable(resolver, key)) resolver[key] = this.makeRelativeResolver(path)
+    }
     
     /** 
      * Core function that creates both the directory resolver and the alias resolver and returns a combined resolver object.
      * 
      * @param {!Object} directoryResolver Object that will contain relative resolver functions.
-     * @param {!Object} aliasResolver Object that will contain resolved aliases.
+     * @param {!Object} aliasMap Object that will contain resolved aliases.
      * @param {!Object} options The object that will contain the function.
      * @param {!Number} options.depth How many directory levels should be processed. Set to -1 for inifinite depth.
      * @param {!String} options.paths Object mapping projects directory structure or options object.
@@ -174,8 +222,26 @@ class PathResolver {
      * @private
      * @memberof PathResolver#
      */
-    _createResolver = (directoryResolver, aliasResolver) => {
-        let { depth, paths, rootPath } = this.options
+    _createResolver = (directoryResolver, aliasMap) => {
+        let { depth, duplicateAliases, paths, rootPath } = this.options
+
+        const _handleRoot = () => {
+            let localRootPath = this._formatPath(rootPath)
+
+            let rootConfig = this._getConfig(paths) || {}
+            let { name, alias } = rootConfig
+
+            let localKey = name || ''
+            let resolverKey = this._getDirectoryResolverKey(localKey, '')
+
+            let aliasUsed = this._handleAlias(localKey, alias, localRootPath, directoryResolver, aliasMap)
+            let aliasIsNotUsed = duplicateAliases || !aliasUsed
+
+            if(aliasIsNotUsed){
+                this._addResolver(resolverKey, localRootPath, directoryResolver)
+            }
+            
+        }
         
         const _resolveLevel = ({
             localPaths,
@@ -189,55 +255,37 @@ class PathResolver {
             }
 
             const _handleObjectValue = (key, value) => {
-                let localRootPath = this._formatPath(key, parentPath)
-
-                let nextScope = this._formatScope(key, scope)    
-                let resolverKey = this._getDirectoryResolverKey(key, scope)
-
-                if(this._hasAlias(value)){
-                    _handleObjectAlias(key, value, localRootPath)
-                }
-
-                if(this._hasLocalAlias(value)){
-                    let localAlias = value._
-                    nextScope = this._formatScope(localAlias, scope)
-                    resolverKey = this._getDirectoryResolverKey(localAlias, scope)
-                }
-
-                let isValidDepth = depth == -1 || index <= depth
-                let duplicatesAreNotPresent = !directoryResolver.hasOwnProperty(resolverKey)
+                let isConfig = key == '_'
                 
-                if(isValidDepth && duplicatesAreNotPresent){
-                    this._addToResolver(resolverKey, localRootPath, directoryResolver)
-                }
+                if (!isConfig){
+                    let localRootPath = this._formatPath(key, parentPath)
 
-                return _resolveLevel({
-                    localPaths: value, 
-                    parentPath: localRootPath, 
-                    scope: nextScope, 
-                    index: ++index, 
-                    ignoreDuplicates: true
-                })
+                    let { alias, name } = this._getConfig(value) || {}
+
+                    let aliasUsed = this._handleAlias(key, alias, localRootPath, directoryResolver, aliasMap)
+
+                    let localKey = name ? name : key
+
+                    let nextScope = this._formatScope(localKey, scope)
+                    let resolverKey = this._getDirectoryResolverKey(localKey, scope)
+
+                    let isValidDepth = depth == -1 || index <= depth
+                    let duplicatesAreNotPresent = !directoryResolver.hasOwnProperty(resolverKey)
+                    let aliasIsNotUsed = duplicateAliases || !aliasUsed
+
+                    if(isValidDepth && duplicatesAreNotPresent && aliasIsNotUsed){
+                        this._addResolver(resolverKey, localRootPath, directoryResolver)
+                    }
+
+                    return _resolveLevel({
+                        localPaths: value, 
+                        parentPath: localRootPath, 
+                        scope: nextScope, 
+                        index: ++index, 
+                        ignoreDuplicates: true
+                    })
+                }
             }
-
-            const _handleObjectAlias = (key, value, localRootPath) => {
-                let aliasKey = value._.replace('@', '')
-                let aliasScope = this._getLocalScope(value, scope)
-                let aliasResolverKey = this._getDirectoryResolverKey(aliasScope)
-                let aliasPath = this._formatPath(key, parentPath, rootPath)
-
-                if(!aliasResolver.hasOwnProperty(key)){
-                    this._addToResolver(aliasResolverKey, aliasPath, directoryResolver)
-                    this._addToResolver(aliasKey, aliasPath, aliasResolver)
-                }
-                
-                _resolveLevel({
-                    localPaths: value, 
-                    parentPath: localRootPath, 
-                    scope: aliasScope, 
-                    index: 0
-                })
-            }    
 
             const localResolver = Object.entries(localPaths).reduce((resolver, [key, value]) => {
                 if(isString(value) && isFileURI(value) && key != '_'){
@@ -252,6 +300,7 @@ class PathResolver {
             return localResolver
          }
 
+         _handleRoot()
          return _resolveLevel({localPaths: paths})
     }
 
@@ -307,6 +356,19 @@ class PathResolver {
     _formatScope = (name, scope) => scope ? `${scope}-${name}` : name
 
     /**
+     * Gets an directory's config object.
+     * 
+     * @param {!Object} paths Object mapping projects directory structure.
+     * 
+     * @returns {Object} Configuration object for current directory.
+     * 
+     * @function
+     * @private
+     * @memberof PathResolver#
+     */
+    _getConfig = (paths) => paths._
+
+    /**
      * Creates a directory resolver key, or a dynamic function name, to be applied to the directory resolver.
      * 
      * @param {?String} name Name of current directory or file.
@@ -318,19 +380,13 @@ class PathResolver {
      * @function
      * @memberof PathResolver#
      */
-    _getDirectoryResolverKey = (name, scope) => {
-		let result
-		if(scope && name){
-			let keyToResolve = `${scope}-${name}`
-			result = this._formatResolverKey(keyToResolve)
-		} else if(name){
-			result = this._formatResolverKey(name)
-		}
-		return result
+    _getDirectoryResolverKey = (name = '', scope) => {        
+        let keyToResolve = scope && name ? `${scope}-${name}` : name
+        return this._formatResolverKey(keyToResolve)
 	}
 
     /**
-     * Initializes directory resolver and alias resolver and determines location. Default location for directory resolver is
+     * Initializes directory resolver, alias map, and file map and determines location. Default location for directory resolver is
      * the {@link PathResolver} instance. Default location for the alias resolver is the 'aliases' property.
      * 
      * @param {?String} key Name of current directory or file.
@@ -343,26 +399,32 @@ class PathResolver {
      * @memberof PathResolver#
      */
     _getInitialResolvers = () => {
-        let { namespace } = this.options
-        let directoryResolver, aliasResolver
+        let { aliasRoot, fileRoot, namespace } = this.options
+        let directoryResolver, aliasMap
 
         if(namespace){
 			this[namespace] = {}
-			this[namespace]['aliases'] = {}
 			directoryResolver = this[namespace]
 		} else {
-			directoryResolver = this
+			warn(`PathResolver's 'namespace' property was invalid.`)
         }
-        
-        aliasResolver = directoryResolver['aliases'] = {}
-        
+
+        if(aliasRoot){
+			this[aliasRoot] = {}
+			aliasMap = this[aliasRoot]
+		} else {
+			warn(`PathResolver's 'aliasRoot' property was invalid.`)
+        }
+                
         return {
             directoryResolver,
-            aliasResolver
+            aliasMap,
         } 
     }
 
     /**
+     * @deprecated since 0.1.0
+     * 
      * Gets the current scope. Checks if current item has an alias scope and returns it, otherwise returns scope.
      * 
      * @param {!String} localPaths Object containing current directory level mapping.
@@ -383,7 +445,24 @@ class PathResolver {
 		} else {
             throw new TypeError(`_getLocalScope was passed no valid parameters, would have returned undefined`)
         }
-	}
+    }
+    
+    _handleAlias = (key, alias, path, directoryResolver, aliasMap) => {
+        let aliasUsed = false
+        if(alias){
+            let aliasKey = alias.replace('@', '')
+            let aliasScope = toKebabCase(aliasKey)
+            let aliasMapKey = this._getDirectoryResolverKey(aliasKey)
+
+            if(hasKeyAvailable(aliasMap, aliasMapKey)){
+                this._addResolver(aliasMapKey, path, directoryResolver)
+                this._addAlias(alias, path, aliasMap)
+                aliasUsed = true
+            }
+        }
+        return aliasUsed
+
+    }
 
     /**
      * Handles initial arguments and converts them into an objects file. Validates option properties using {@link PathResolver#_validateOptions}.
@@ -453,6 +532,8 @@ class PathResolver {
     }
 
     /**
+     * @deprecated since 0.1.1
+     * 
      * Determines if directory object map contains an alias field.
      * 
      * @param {!Object} paths Object mapping projects directory structure.
@@ -463,9 +544,24 @@ class PathResolver {
      * @private
      * @memberof PathResolver#
      */
-    _hasAlias = (paths) => paths.hasOwnProperty('_') && paths._.indexOf('@') == 0
+    _hasAlias = (paths) => paths.hasOwnProperty('_') && paths._.alias
+
+    /**
+     * Determines if directory object map contains a config property, indicated by a key of underscore.
+     * 
+     * @param {!Object} paths Object mapping projects directory structure.
+     * 
+     * @returns {Boolean} True if contains config property.
+     * 
+     * @function
+     * @private
+     * @memberof PathResolver#
+     */
+    _hasConfig = (paths) => paths.hasOwnProperty('_')
     
     /**
+     * @deprecated since 0.1.0
+     * 
      * Determines if directory object map contains a local alias field.
      * 
      * @param {!Object} paths Object mapping projects directory structure.
@@ -476,25 +572,7 @@ class PathResolver {
      * @private
      * @memberof PathResolver#
      */
-	_hasLocalAlias = (paths) => paths.hasOwnProperty('_') && paths._.indexOf('@') == -1
-    
-     /**
-     * Determines if directory object map contains a local alias field.
-     * 
-     * @param {!Object} fullResolver Combined resolver returned from {@link PathResolver#_createResolver}.
-     * 
-     * @returns {Boolean} True if contains local alias.
-     * @see {@link PathResolver#_createResolver}
-     * 
-     * @function
-     * @private
-     * @memberof PathResolver#
-     */
-    _setFileMap = (fullResolver) => {
-        let { fileroot, rootPath } = this.options
-        this[fileroot] =  fullResolver
-        this[fileroot]['_root'] = rootPath
-    }
+	_hasLocalAlias = (paths) => paths.hasOwnProperty('_') && paths._.name
 
     /**
      * Validates options object and set defaults.
@@ -508,11 +586,11 @@ class PathResolver {
      * @memberof PathResolver#
      */
 	_validateOptions = (options) => {
-        let { namespace, fileroot, rootPath, resolverPrefix, ...other } = options 
+        let { duplicateAliases, namespace, rootPath, resolverPrefix, ...other } = options 
         let validated = Object.assign({}, PathResolver.defaultOptions, filterObject({
             ...other,
+            duplicateAliases: isBoolean(duplicateAliases) ? duplicateAliases : undefined,
             namespace: isString(namespace) && namespace.trim().length > 0 ? namespace : undefined,
-            fileroot: isString(fileroot) && fileroot.trim().length > 0 ? fileroot : undefined,
             rootPath: isString(rootPath) && rootPath.trim().length > 0 ? rootPath : undefined,
             resolverPrefix: isString(rootPath) && rootPath.trim().length > 0 ? rootPath : undefined
         }))
