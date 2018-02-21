@@ -1,14 +1,15 @@
 {
   "name": "@beautiful-code/path-resolver",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
     "start": "babel -w ./src --out-dir ./dist",
     "build": "babel ./src --out-dir ./dist",
+    "generate:docs": "jsdoc -c ./config/jsdoc.config.json",
     "test": "./node_modules/.bin/_mocha",
     "test:watch": "npm run test -- --watch",
-    "generate:docs": "jsdoc -c ./config/jsdoc.config.json"
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -19,11 +20,13 @@
   "bugs": {
     "url": "https://github.com/MyNameReallySux/paths-generator/issues"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "homepage": "https://github.com/MyNameReallySux/paths-generator#readme",
   "dependencies": {
     "@beautiful-code/object-utils": "0.0.6",
-    "@beautiful-code/string-utils": "^0.1.6",
+    "@beautiful-code/string-utils": "^0.1.7",
     "@beautiful-code/type-utils": "^0.1.6",
     "babel-polyfill": "^6.26.0",
     "colors": "^1.1.2",
