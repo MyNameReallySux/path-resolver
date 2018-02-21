@@ -1,6 +1,7 @@
 {
     "opts": {
-        "destination": "./docs/gen",
+        "destination": "./docs/",
+        "readme": "./README.md",
         "template": "./node_modules/minami",
         "private": true,
         "sort": false
