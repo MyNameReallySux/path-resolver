@@ -124,7 +124,7 @@ resolvePublicComponents() // resolves correctly
 
 ## Documentation
 
-You can read the full documentation [here!](https://mynamereallysux.github.io/path-resolver/).
+You can read the full documentation [here!](https://mynamereallysux.github.io/path-resolver/)
 
 ## Contributing
 
