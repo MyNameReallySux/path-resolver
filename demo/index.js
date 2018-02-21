@@ -7,7 +7,7 @@ let { isObject } = require('@beautiful-code/type-utils')
 
 let { print, debug, error } = require('../dist/lib/ConsoleUtils')
 
-let { PathResolver } = require('..git con/dist/index')
+let { PathResolver } = require('../dist/index')
 
 const directoryMap = {
 	_: {
