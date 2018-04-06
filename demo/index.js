@@ -26,16 +26,21 @@ const directoryMap = {
 	dist: {
 		app: 'app.bundle.js'
 	},
+	public: {
+		_: { ignore: true },
+		test: { _: { alias: '@public' }}
+	},
 	scss: {
 		_: {
-			name: 'style'
+			name: 'style',
+			ignoreBranch: true
 		},
 		manifest: '_manifest.scss',
 		app: 'app.scss',
 		nav: {
 			manifest: '_manifest.scss',
 			test: {
-				_: { alias: '@test', name: 'mocha' },
+				_: { alias: '@nav/test', name: 'mocha' },
 				more: 'more.html'
 				
 			}

@@ -89,7 +89,38 @@ class PathResolver {
         paths: {},
         resolverPrefix: 'resolve',
         rootPath: fs.realpathSync(process.cwd()),
-	}
+    }
+    
+    /**
+     * Each directory can contain a config option. These options are defined by an '_' property within the directory map.
+     * 
+     * @example
+     * let map = new PathResolver({
+     *     _: { alias: '@root' }            // resolveRoot() -> path/to/project
+     *     src: { _: { name: source } },    // resolveSource() -> path/to/project/src
+     *     dist: {  _: { ignore: true },    // this route is ignored, children still render
+     *         css: {}                      // resolveDistCss() -> path/to/project/src/css
+     *     },
+     *     libs: {  _: { ignoreBranch: true } // *this and child routes ignored
+     *         ...
+     *     }
+     * })
+     * 
+     * @property {String} name Rename current directory's resolver function, affecting children as well.
+     * @property {String} alias Rename current directory's resolver function and set as the root scope, affecting children as well.
+     * @property {Boolean} ignore Does not export the current directory as a resolver or as an alias.
+     * @property {Boolean} duplicateAliases Does not export the current directory or it's children as a resolver or alias.
+     * 
+     * @static
+     * @const
+     * @memberof PathResolver
+     */
+    static defaultConfig = {
+        name: undefined,
+        alias: undefined,
+        ignore: false,
+        ignoreBranch: false
+    }
 
 	// Class Initialization
 
@@ -153,6 +184,15 @@ class PathResolver {
      */
     makeRelativeResolver = (rootPath) => (relativePath = '') => path.resolve(rootPath, relativePath)
 
+    /** 
+     * Gets a string representation of the resolver incuding a list of all resolve functions and their 
+     * resolved paths, as well as a list of aliases and their resolved paths.
+     * 
+     * @returns {Function} Returns a string representation of the resolver..
+     * 
+     * @function
+     * @public
+     */
     toString = () => {
         let directoryResolver = this.getDirectoryResolver()
         let aliasMap = this.getAliasMap()
@@ -184,6 +224,16 @@ ${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
 }, '')}`
     }
 
+     /** 
+     * Prints out a string representation of the resolver, the result of the {@link PathResolver#toString toString} method.
+     * Includes a list of all resolve functions and their resolved paths, as well as a list of aliases and their resolved paths.
+     * 
+     * @returns {Function} Returns a string representation of the resolver..
+     * 
+     * @see {@link PathResolver#toString toString}
+     * @function
+     * @public
+     */
     printDetails = () => print(this.toString())
         
     // Private Methods
@@ -229,7 +279,7 @@ ${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
             let localRootPath = this._formatPath(rootPath)
 
             let rootConfig = this._getConfig(paths) || {}
-            let { name, alias } = rootConfig
+            let { alias, name } = rootConfig
 
             let localKey = name || ''
             let resolverKey = this._getDirectoryResolverKey(localKey, '')
@@ -260,7 +310,9 @@ ${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
                 if (!isConfig){
                     let localRootPath = this._formatPath(key, parentPath)
 
-                    let { alias, name } = this._getConfig(value) || {}
+                    let { alias, name, ignore, ignoreBranch } = this._getConfig(value) || {}
+
+                    if(ignoreBranch) return
 
                     let aliasUsed = this._handleAlias(key, alias, localRootPath, directoryResolver, aliasMap)
 
@@ -273,8 +325,10 @@ ${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
                     let duplicatesAreNotPresent = !directoryResolver.hasOwnProperty(resolverKey)
                     let aliasIsNotUsed = duplicateAliases || !aliasUsed
 
-                    if(isValidDepth && duplicatesAreNotPresent && aliasIsNotUsed){
-                        this._addResolver(resolverKey, localRootPath, directoryResolver)
+                    if(!ignore){
+                        if(isValidDepth && duplicatesAreNotPresent && aliasIsNotUsed){
+                            this._addResolver(resolverKey, localRootPath, directoryResolver)
+                        }
                     }
 
                     return _resolveLevel({
@@ -340,7 +394,8 @@ ${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
      * @private
      * @memberof PathResolver#
      */
-	_formatResolverKey = (name) => toCamelCase(`${this.options.resolverPrefix}-${toSnakeCase(name)}`)
+    _formatResolverKey = (name) => 
+        toCamelCase(`${this.options.resolverPrefix}-${toSnakeCase(name.replace(/[\/\\]/, '-'))}`)
 
     /** 
      * Format scope which is a concatenation of a key and the previous scope in kebab case.
@@ -356,7 +411,7 @@ ${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
     _formatScope = (name, scope) => scope ? `${scope}-${name}` : name
 
     /**
-     * Gets an directory's config object.
+     * Gets a directory's config object.
      * 
      * @param {!Object} paths Object mapping projects directory structure.
      * 
@@ -421,36 +476,11 @@ ${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
             aliasMap,
         } 
     }
-
-    /**
-     * @deprecated since 0.1.0
-     * 
-     * Gets the current scope. Checks if current item has an alias scope and returns it, otherwise returns scope.
-     * 
-     * @param {!String} localPaths Object containing current directory level mapping.
-     * @param {!String} scope A string representation of the nested path in kebab case 'this-is-kebab-case'
-     * @throws {TypeError} _getLocalScope was passed no valid parameters, would have returned undefined
-     * @returns {String} Scope relative to alias or same scope.
-     * 
-     * @function
-     * @private
-     * @memberof PathResolver#
-     */
-	_getLocalScope = (localPaths, scope) => {
-		if(localPaths && this._hasAlias(localPaths) || this._hasLocalAlias(localPaths)){
-            let localScope = localPaths._.replace('@', '')
-			return localScope
-		} else if(scope) {
-			return scope
-		} else {
-            throw new TypeError(`_getLocalScope was passed no valid parameters, would have returned undefined`)
-        }
-    }
     
     _handleAlias = (key, alias, path, directoryResolver, aliasMap) => {
         let aliasUsed = false
         if(alias){
-            let aliasKey = alias.replace('@', '')
+            let aliasKey = alias.replace(/@/g, '')
             let aliasScope = toKebabCase(aliasKey)
             let aliasMapKey = this._getDirectoryResolverKey(aliasKey)
 
@@ -572,7 +602,7 @@ ${Object.entries(aliasMap).reduce((str, [alias, path], index, collection) => {
      * @private
      * @memberof PathResolver#
      */
-	_hasLocalAlias = (paths) => paths.hasOwnProperty('_') && paths._.name
+	_hasName = (paths) => paths.hasOwnProperty('_') && paths._.name
 
     /**
      * Validates options object and set defaults.

@@ -3,7 +3,7 @@
         "destination": "./docs/",
         "readme": "./README.md",
         "template": "./node_modules/minami",
-        "private": true,
+        "private": false,
         "sort": false
     },
     "plugins": [],
