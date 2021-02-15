@@ -4,10 +4,10 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "start": "babel -w ./src --out-dir ./dist",
-    "build": "babel ./src --out-dir ./dist",
+    "start": "npx babel -w ./src --out-dir ./dist",
+    "build": "npx babel ./src --out-dir ./dist",
     "generate:docs": "jsdoc -c ./config/jsdoc.config.json",
-    "test": "./node_modules/.bin/_mocha",
+    "test": "npx mocha",
     "test:watch": "npm run test -- --watch",
     "prepublish": "npm run build"
   },

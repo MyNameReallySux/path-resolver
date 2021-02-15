@@ -28,7 +28,7 @@ const directoryMap = {
 	},
 	public: {
 		_: { ignore: true },
-		test: { _: { alias: '@public' }}
+		test: { _: { alias: '#public' }}
 	},
 	scss: {
 		_: {
