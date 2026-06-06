@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> **This package has moved.** It now lives in [beautiful-code-monorepo](https://github.com/MyNameReallySux/beautiful-code-monorepo) as [`packages/path-resolver`](https://github.com/MyNameReallySux/beautiful-code-monorepo/tree/main/packages/path-resolver). This repository is archived; the modern 1.0 rewrite ships from the monorepo.
+
 # Path Resolver
 
 Path resolver was inspired by inspecting create-react-app. In the webpack configuration, it is always necessary to resolve paths and make them manageable. Auto-generating functions based on path name make it easy to mock things up, and aliases are useful to reduce code for deeply nested directories. Aliases can also be extracted and used as-is in webpack config.
