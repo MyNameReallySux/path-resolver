@@ -44,7 +44,7 @@
     "chai": "^4.1.2",
     "eslint": "^4.13.1",
     "minami": "git://github.com/mynamereallysux/minami.git#sort-data",
-    "mocha": "^4.1.0",
+    "mocha": "^10.2.0",
     "webpack": "^3.10.0"
   }
 }
